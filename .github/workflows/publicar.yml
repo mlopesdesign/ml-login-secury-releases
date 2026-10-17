@@ -1,0 +1,26 @@
+# Publica a release quando uma versão nova chega em publicar/.
+# publicar/versao.txt → número (ex.: 2.2.1) · publicar/notas.md → o que mudou
+# publicar/ml-login-secury-vX.Y.Z.zip → pacote (o atualizador do plugin usa só esse nome exato)
+name: Publicar versão
+on:
+  push:
+    branches: [main]
+    paths: ['publicar/versao.txt']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Criar release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=$(tr -d ' \r\n' < publicar/versao.txt)
+          Z="publicar/ml-login-secury-v$V.zip"
+          test -f "$Z"
+          unzip -Z1 "$Z" | grep -qx "ml-login-secury/ml-login-secury.php"
+          if gh release view "v$V" >/dev/null 2>&1; then echo "v$V já existe"; exit 0; fi
+          gh release create "v$V" "$Z" --title "ML Login Secury v$V" --notes-file publicar/notas.md --target main --latest
